@@ -50,6 +50,7 @@ namespace Api.Controllers
         }
 
         [HttpGet("{sku}")]
+        //Otrzymanie Modelu do wyświetlenia (złożone z danych zebranych po "SKU" z naszych tablic)i
         public IActionResult GetProductInfo(string sku)
         {
             var result = _dbService.GetProductInfo(sku);
@@ -59,11 +60,10 @@ namespace Api.Controllers
         #endregion
 
         #region Helppers
+        //Endpoint do tworzenia Bazy Danych
         [HttpPost("Create Database (if you need)")]
         public IActionResult CreateDatabase()
-        {
-
-            _dbService.CreateSQLiteDatabase();
+        {            _dbService.CreateSQLiteDatabase();
             return Ok();
         }
         #endregion

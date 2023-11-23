@@ -3,7 +3,6 @@ using CsvHelper.Configuration;
 using Dapper;
 using Microsoft.Data.Sqlite;
 using System.Data;
-using System.Diagnostics;
 using System.Globalization;
 using System.Net;
 using Api.Models;
@@ -13,13 +12,17 @@ namespace Api.Service
     public class DbService
     {
         private readonly IConfiguration _configuration;
-        private readonly IDbConnection _dbConnection;
         private readonly string _connectionString;
+
+        #region Konstruktor
         public DbService(IConfiguration configuration, IDbConnection dbConnection)
         {
+            //Proszę pamiętać o dostosowanie ConnectionStringa do swojego środowiska.
             _configuration = configuration;
             _connectionString = _configuration.GetConnectionString("Zintegrujemy");
         }
+        #endregion
+        //Czytanie pliku CSV i zapis do bazy danych
         public void GetInventory(string csvFilePath)
         {
             using var connection = new SqliteConnection(_connectionString);
@@ -30,13 +33,13 @@ namespace Api.Service
             using (var reader = new StreamReader(csvFilePath))
             using (var csv = new CsvReader(reader, new CsvConfiguration(CultureInfo.InvariantCulture)
             {
-                IgnoreBlankLines = true, // Ignoruj puste linie
-                HeaderValidated = null, // Wyłącz walidację nagłówka
-                HasHeaderRecord = false // Brak nagłówków
+                IgnoreBlankLines = true,
+                HeaderValidated = null, 
+                HasHeaderRecord = false 
             }))
             {
                 csv.Context.RegisterClassMap<PriceMap>();
-                //pomijamy pierwszą linijkę
+                //pomijamy pierwszą linijkę gdyż jest złożona z nagłówków
                 csv.Read();
 
                 var allInventory = csv.GetRecords<Inventory>()
@@ -63,7 +66,8 @@ namespace Api.Service
                 }
             }
         }
-     
+
+        //Czytanie pliku CSV i zapis do bazy danych
 
         public void GetPrice(String csvFilePath)
         {
@@ -82,9 +86,9 @@ namespace Api.Service
             }
         }
 
-        // Tak Moim staniem powinno wyglądać GetProducts, niestety przez małą ilość czasu wolałem to zrobić w prostym kodem,
-        // nie jest on najoptymalniejszą wersją jednakże sprawną a nie mogę poświęcić więcej czasu na debbugowanie w celu znalezienia błędu
-        // Problem tworzy tu wers 52574 :"__empty_line__ " :D 
+        // Tak moim staniem powinno wyglądać GetProducts, niestety przez małą ilość czasu wolałem to zrobić  prostym kodem,
+        // nie jest on najoptymalniejszą wersją jednakże termin a nie mogę poświęcić więcej czasu na debbugowanie w celu znalezienia błędu
+        // najprawdopodobniej Problem tworzy tu wers 52574 :"__empty_line__ " :D 
         //   public void GetProducts(string csvFilePath)
         //   {
         //       var connectionString = _configuration.GetConnectionString("Zintegrujemy");
@@ -116,7 +120,10 @@ namespace Api.Service
         //               }
         //               catch (Exception)
         //               {transaction.Rollback();
-        //                   throw;}}}}
+        //                   throw;}}}
+        //                   
+
+        //Czytanie pliku CSV i zapis do bazy danych
         public void GetProducts(string csvFilePath)
         {
             using (StreamReader reader = new StreamReader(csvFilePath))
@@ -126,9 +133,7 @@ namespace Api.Service
                 while ((line = reader.ReadLine()) != null)
                 {
                     if (CheckProductValidation(line))
-                    {                   
-                        // Zapisz do bazy danych SQLite używając Dappera.
-         
+                    {                            
                         using var connection = new SqliteConnection(_connectionString);
                         if (connection.State == ConnectionState.Closed)
                         {
@@ -136,7 +141,7 @@ namespace Api.Service
                         }
                         var rowParts = line.Split(';');
 
-                        // Utwórz anonimowy obiekt, który zawiera tylko te właściwości, które chcesz zapisać do bazy danych.
+                        //tworzymy obiekt który zapiszemy w bazie danych, jego parametry będą odpowiednio przekonwertowane 
                         var parameters = new Products
                         {
                             ID = int.Parse(rowParts[0].Trim('\"')),
@@ -156,13 +161,15 @@ namespace Api.Service
                 }
             }
         }
+        //sprawdzamy czy dany produkt spełnia nasze wymagania i należy dodać go do bazy danych
+
         private bool CheckProductValidation(string line)
         {
             var rowParts = line.Split(';');
-            // Sprawdź czy 'is_wire' (indeks 6) to 1
             return rowParts.Length > 9 && rowParts[8].Trim() == "\"1\"" && rowParts[9] == "\"24h\"";
-        }        
+        }
 
+        //metoda to utworzenia nowej Bazy danych o podanych tablicach
         public void CreateSQLiteDatabase()
         {
             Console.WriteLine("CreateSQLiteDatabase method is called.");
@@ -233,7 +240,7 @@ namespace Api.Service
             }
         }
 
-       //Metoda wykorzystywana w 2 endpoincie 
+        //Metoda wykorzystywana w 2 endpoincie  zwracająca model productInfo
         public ReturnerdInfo GetProductInfo(string sku)
         {
             using (var connection = new SqliteConnection(_connectionString))
